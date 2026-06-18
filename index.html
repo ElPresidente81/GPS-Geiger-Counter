@@ -33,7 +33,6 @@
         <circle id="c2" cx="100" cy="100" r="60" fill="red" />
         <circle id="c3" cx="100" cy="100" r="30" fill="red" />
         <circle id="c4" cx="100" cy="100" r="10" fill="red" />
-
         <text x="100" y="25">50-100m</text>
         <text x="100" y="55">25-50m</text>
         <text x="100" y="85">10-25m</text>
@@ -50,10 +49,16 @@
     let isPaused = false;
 
     function parseCoords(input) {
-        if (input.includes('N') || input.includes('W') || input.includes('S') || input.includes('E')) {
-            const parts = input.match(/(\d+\.?\d*)/g);
+        const cleanInput = input.replace(/[^\d\.\-\sNSEW]/gi, ' ');
+        const parts = cleanInput.match(/(\d+\.?\d*)/g);
+        
+        if (cleanInput.toUpperCase().includes('N') || cleanInput.toUpperCase().includes('S') || 
+            cleanInput.toUpperCase().includes('E') || cleanInput.toUpperCase().includes('W')) {
             let lat = parseFloat(parts[0]) + parseFloat(parts[1])/60;
-            let lon = -(parseFloat(parts[2]) + parseFloat(parts[3])/60);
+            if (cleanInput.toUpperCase().includes('S')) lat = -lat;
+            
+            let lon = parseFloat(parts[2]) + parseFloat(parts[3])/60;
+            if (cleanInput.toUpperCase().includes('W')) lon = -lon;
             return { lat, lon };
         }
         const [lat, lon] = input.split(',').map(Number);
@@ -71,7 +76,6 @@
         if (isPaused) return;
         const dist = getDistance(pos.coords.latitude, pos.coords.longitude, target.lat, target.lon);
         document.getElementById('dist-display').innerText = `Distance: ${Math.round(dist)} meters`;
-        
         document.getElementById('c1').style.fill = (dist < 50) ? '#ccc' : 'red';
         document.getElementById('c2').style.fill = (dist < 25) ? '#ccc' : 'red';
         document.getElementById('c3').style.fill = (dist < 10) ? '#ccc' : 'red';
