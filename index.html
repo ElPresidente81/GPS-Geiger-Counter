@@ -15,13 +15,14 @@
         svg { width: 300px; height: 300px; margin: 20px auto; display: block; }
         circle { stroke: black; stroke-width: 2; transition: fill 0.3s; }
         text { font-size: 8px; font-weight: bold; text-anchor: middle; fill: white; pointer-events: none; }
+        #debug-info { font-size: 12px; color: #555; margin-top: 20px; text-align: left; padding: 0 20px; border-top: 1px solid #eee; }
     </style>
 </head>
 <body>
 
 <div id="setup">
     <h1>Proximity Radar</h1>
-    <input type="text" id="coords" placeholder="N 39 00.476 W 084 08.750" value="38.9946311, -84.2186742">
+    <input type="text" id="coords" placeholder="N 39 00.476 W 084 08.750">
     <br>
     <button class="btn-start" onclick="startApp()">START MONITOR</button>
 </div>
@@ -38,9 +39,13 @@
         <text x="100" y="85">10-25m</text>
         <text x="100" y="103">&lt;10m</text>
     </svg>
-    <br>
     <button class="btn-control" onclick="togglePause()" id="pause-btn">PAUSE</button>
     <button class="btn-control" onclick="stopApp()" style="background: #dc3545;">STOP</button>
+
+    <div id="debug-info">
+        <div>Target: <span id="target-coords">--</span></div>
+        <div>Current: <span id="current-coords">--</span></div>
+    </div>
 </div>
 
 <script>
@@ -69,13 +74,23 @@
         target = parseCoords(document.getElementById('coords').value);
         document.getElementById('setup').style.display = 'none';
         document.getElementById('monitor').style.display = 'block';
+        
+        document.getElementById('target-coords').innerText = `${target.lat.toFixed(5)}, ${target.lon.toFixed(5)}`;
+        
         watchID = navigator.geolocation.watchPosition(updateDist, console.error, {enableHighAccuracy: true});
     }
 
     function updateDist(pos) {
         if (isPaused) return;
-        const dist = getDistance(pos.coords.latitude, pos.coords.longitude, target.lat, target.lon);
+        
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        
+        document.getElementById('current-coords').innerText = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+        
+        const dist = getDistance(lat, lon, target.lat, target.lon);
         document.getElementById('dist-display').innerText = `Distance: ${Math.round(dist)} meters`;
+        
         document.getElementById('c1').style.fill = (dist < 50) ? '#ccc' : 'red';
         document.getElementById('c2').style.fill = (dist < 25) ? '#ccc' : 'red';
         document.getElementById('c3').style.fill = (dist < 10) ? '#ccc' : 'red';
