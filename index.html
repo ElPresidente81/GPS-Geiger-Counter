@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Radar Prototype</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; background: #fff; }
+        #setup { display: block; }
+        #monitor { display: none; }
+        input { padding: 10px; width: 80%; margin: 10px 0; border: 1px solid #ccc; }
+        button { padding: 15px 30px; cursor: pointer; font-size: 1rem; border: none; border-radius: 5px; }
+        .btn-start { background: #007bff; color: white; }
+        .btn-control { background: #6c757d; color: white; margin: 5px; }
+        svg { width: 300px; height: 300px; margin: 20px auto; display: block; }
+        circle { stroke: black; stroke-width: 2; transition: fill 0.3s; }
+        text { font-size: 8px; font-weight: bold; text-anchor: middle; fill: white; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<div id="setup">
+    <h1>Proximity Radar</h1>
+    <input type="text" id="coords" placeholder="N 39 00.476 W 084 08.750" value="38.9946311, -84.2186742">
+    <br>
+    <button class="btn-start" onclick="startApp()">START MONITOR</button>
+</div>
+
+<div id="monitor">
+    <h2 id="dist-display">Distance: -- meters</h2>
+    <svg viewBox="0 0 200 200">
+        <circle id="c1" cx="100" cy="100" r="90" fill="red" />
+        <circle id="c2" cx="100" cy="100" r="60" fill="red" />
+        <circle id="c3" cx="100" cy="100" r="30" fill="red" />
+        <circle id="c4" cx="100" cy="100" r="10" fill="red" />
+
+        <text x="100" y="25">50-100m</text>
+        <text x="100" y="55">25-50m</text>
+        <text x="100" y="85">10-25m</text>
+        <text x="100" y="103">&lt;10m</text>
+    </svg>
+    <br>
+    <button class="btn-control" onclick="togglePause()" id="pause-btn">PAUSE</button>
+    <button class="btn-control" onclick="stopApp()" style="background: #dc3545;">STOP</button>
+</div>
+
+<script>
+    let target = { lat: 0, lon: 0 };
+    let watchID = null;
+    let isPaused = false;
+
+    function parseCoords(input) {
+        if (input.includes('N') || input.includes('W') || input.includes('S') || input.includes('E')) {
+            const parts = input.match(/(\d+\.?\d*)/g);
+            let lat = parseFloat(parts[0]) + parseFloat(parts[1])/60;
+            let lon = -(parseFloat(parts[2]) + parseFloat(parts[3])/60);
+            return { lat, lon };
+        }
+        const [lat, lon] = input.split(',').map(Number);
+        return { lat, lon };
+    }
+
+    function startApp() {
+        target = parseCoords(document.getElementById('coords').value);
+        document.getElementById('setup').style.display = 'none';
+        document.getElementById('monitor').style.display = 'block';
+        watchID = navigator.geolocation.watchPosition(updateDist, console.error, {enableHighAccuracy: true});
+    }
+
+    function updateDist(pos) {
+        if (isPaused) return;
+        const dist = getDistance(pos.coords.latitude, pos.coords.longitude, target.lat, target.lon);
+        document.getElementById('dist-display').innerText = `Distance: ${Math.round(dist)} meters`;
+        
+        document.getElementById('c1').style.fill = (dist < 50) ? '#ccc' : 'red';
+        document.getElementById('c2').style.fill = (dist < 25) ? '#ccc' : 'red';
+        document.getElementById('c3').style.fill = (dist < 10) ? '#ccc' : 'red';
+    }
+
+    function togglePause() {
+        isPaused = !isPaused;
+        document.getElementById('pause-btn').innerText = isPaused ? "RESUME" : "PAUSE";
+    }
+
+    function stopApp() {
+        if (watchID !== null) navigator.geolocation.clearWatch(watchID);
+        document.getElementById('setup').style.display = 'block';
+        document.getElementById('monitor').style.display = 'none';
+    }
+
+    function getDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3;
+        const φ1 = lat1 * Math.PI/180, φ2 = lat2 * Math.PI/180;
+        const Δφ = (lat2-lat1) * Math.PI/180, Δλ = (lon2-lon1) * Math.PI/180;
+        const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2) * Math.sin(Δλ/2)**2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+</script>
+</body>
+</html>
