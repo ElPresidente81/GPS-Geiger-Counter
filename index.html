@@ -50,8 +50,9 @@
 
 <script>
     let target = { lat: 0, lon: 0 };
-    let watchID = null;
     let isPaused = false;
+    let isActive = false;
+    let pollTimeout = null;
 
     function setCurrentAsTarget() {
         if (navigator.geolocation) {
@@ -81,23 +82,39 @@
         document.getElementById('target-coords').innerText = `${target.lat.toFixed(5)}, ${target.lon.toFixed(5)}`;
         document.getElementById('setup').style.display = 'none';
         document.getElementById('monitor').style.display = 'block';
-        watchID = navigator.geolocation.watchPosition(updateDist, console.error, {enableHighAccuracy: true});
+        isActive = true;
+        updateLocation();
     }
 
-    function updateDist(pos) {
-        if (isPaused) return;
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        document.getElementById('current-coords').innerText = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-        
-        const dist = getDistance(lat, lon, target.lat, target.lon);
-        const bearing = getBearing(lat, lon, target.lat, target.lon);
-        
-        document.getElementById('dist-display').innerText = `Distance: ${Math.round(dist)}m (${bearing})`;
-        
-        document.getElementById('c1').style.fill = (dist < 50) ? '#ccc' : 'red';
-        document.getElementById('c2').style.fill = (dist < 25) ? '#ccc' : 'red';
-        document.getElementById('c3').style.fill = (dist < 10) ? '#ccc' : 'red';
+    function updateLocation() {
+        if (!isActive) return;
+        if (isPaused) {
+            pollTimeout = setTimeout(updateLocation, 5000);
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition((pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            document.getElementById('current-coords').innerText = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+            
+            const dist = getDistance(lat, lon, target.lat, target.lon);
+            const bearing = getBearing(lat, lon, target.lat, target.lon);
+            
+            document.getElementById('dist-display').innerText = `Distance: ${Math.round(dist)}m (${bearing})`;
+            
+            document.getElementById('c1').style.fill = (dist < 50) ? '#ccc' : 'red';
+            document.getElementById('c2').style.fill = (dist < 25) ? '#ccc' : 'red';
+            document.getElementById('c3').style.fill = (dist < 10) ? '#ccc' : 'red';
+
+            // DYNAMIC POLLING LOGIC
+            let pollInterval = (dist < 20) ? 1000 : (dist < 100) ? 5000 : 10000;
+            pollTimeout = setTimeout(updateLocation, pollInterval);
+
+        }, (err) => {
+            console.error(err);
+            pollTimeout = setTimeout(updateLocation, 5000);
+        }, {enableHighAccuracy: true});
     }
 
     function getBearing(lat1, lon1, lat2, lon2) {
@@ -117,7 +134,8 @@
     }
 
     function stopApp() {
-        if (watchID !== null) navigator.geolocation.clearWatch(watchID);
+        isActive = false;
+        if (pollTimeout) clearTimeout(pollTimeout);
         document.getElementById('setup').style.display = 'block';
         document.getElementById('monitor').style.display = 'none';
     }
