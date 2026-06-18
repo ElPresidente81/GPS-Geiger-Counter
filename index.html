@@ -28,7 +28,7 @@
 </div>
 
 <div id="monitor">
-    <h2 id="dist-display">Distance: -- meters</h2>
+    <h2 id="dist-display">Distance: --</h2>
     <svg viewBox="0 0 200 200">
         <circle id="c1" cx="100" cy="100" r="90" fill="red" />
         <circle id="c2" cx="100" cy="100" r="60" fill="red" />
@@ -89,11 +89,26 @@
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
         document.getElementById('current-coords').innerText = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+        
         const dist = getDistance(lat, lon, target.lat, target.lon);
-        document.getElementById('dist-display').innerText = `Distance: ${Math.round(dist)} meters`;
+        const bearing = getBearing(lat, lon, target.lat, target.lon);
+        
+        document.getElementById('dist-display').innerText = `Distance: ${Math.round(dist)}m (${bearing})`;
+        
         document.getElementById('c1').style.fill = (dist < 50) ? '#ccc' : 'red';
         document.getElementById('c2').style.fill = (dist < 25) ? '#ccc' : 'red';
         document.getElementById('c3').style.fill = (dist < 10) ? '#ccc' : 'red';
+    }
+
+    function getBearing(lat1, lon1, lat2, lon2) {
+        const φ1 = lat1 * Math.PI/180, φ2 = lat2 * Math.PI/180;
+        const Δλ = (lon2 - lon1) * Math.PI/180;
+        const y = Math.sin(Δλ) * Math.cos(φ2);
+        const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+        let θ = Math.atan2(y, x);
+        let deg = (θ * 180 / Math.PI + 360) % 360;
+        const compass = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+        return compass[Math.round(deg / 45) % 8];
     }
 
     function togglePause() {
