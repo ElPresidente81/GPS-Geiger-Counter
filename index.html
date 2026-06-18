@@ -9,9 +9,9 @@
         #setup { display: block; }
         #monitor { display: none; }
         input { padding: 10px; width: 80%; margin: 10px 0; border: 1px solid #ccc; }
-        button { padding: 15px 30px; cursor: pointer; font-size: 1rem; border: none; border-radius: 5px; }
+        button { padding: 15px 30px; cursor: pointer; font-size: 1rem; border: none; border-radius: 5px; display: block; margin: 10px auto; width: 80%; }
         .btn-start { background: #007bff; color: white; }
-        .btn-control { background: #6c757d; color: white; margin: 5px; }
+        .btn-control { background: #6c757d; color: white; }
         svg { width: 300px; height: 300px; margin: 20px auto; display: block; }
         circle { stroke: black; stroke-width: 2; transition: fill 0.3s; }
         text { font-size: 8px; font-weight: bold; text-anchor: middle; fill: white; pointer-events: none; }
@@ -23,8 +23,8 @@
 <div id="setup">
     <h1>Proximity Radar</h1>
     <input type="text" id="coords" placeholder="N 39 00.476 W 084 08.750">
-    <br>
     <button class="btn-start" onclick="startApp()">START MONITOR</button>
+    <button class="btn-control" onclick="setCurrentAsTarget()">SET TO CURRENT GPS</button>
 </div>
 
 <div id="monitor">
@@ -53,15 +53,21 @@
     let watchID = null;
     let isPaused = false;
 
+    function setCurrentAsTarget() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+                document.getElementById('coords').value = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
+            }, (err) => { alert("Location access denied."); });
+        }
+    }
+
     function parseCoords(input) {
         const cleanInput = input.replace(/[^\d\.\-\sNSEW]/gi, ' ');
         const parts = cleanInput.match(/(\d+\.?\d*)/g);
-        
         if (cleanInput.toUpperCase().includes('N') || cleanInput.toUpperCase().includes('S') || 
             cleanInput.toUpperCase().includes('E') || cleanInput.toUpperCase().includes('W')) {
             let lat = parseFloat(parts[0]) + parseFloat(parts[1])/60;
             if (cleanInput.toUpperCase().includes('S')) lat = -lat;
-            
             let lon = parseFloat(parts[2]) + parseFloat(parts[3])/60;
             if (cleanInput.toUpperCase().includes('W')) lon = -lon;
             return { lat, lon };
@@ -72,25 +78,19 @@
 
     function startApp() {
         target = parseCoords(document.getElementById('coords').value);
+        document.getElementById('target-coords').innerText = `${target.lat.toFixed(5)}, ${target.lon.toFixed(5)}`;
         document.getElementById('setup').style.display = 'none';
         document.getElementById('monitor').style.display = 'block';
-        
-        document.getElementById('target-coords').innerText = `${target.lat.toFixed(5)}, ${target.lon.toFixed(5)}`;
-        
         watchID = navigator.geolocation.watchPosition(updateDist, console.error, {enableHighAccuracy: true});
     }
 
     function updateDist(pos) {
         if (isPaused) return;
-        
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
-        
         document.getElementById('current-coords').innerText = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-        
         const dist = getDistance(lat, lon, target.lat, target.lon);
         document.getElementById('dist-display').innerText = `Distance: ${Math.round(dist)} meters`;
-        
         document.getElementById('c1').style.fill = (dist < 50) ? '#ccc' : 'red';
         document.getElementById('c2').style.fill = (dist < 25) ? '#ccc' : 'red';
         document.getElementById('c3').style.fill = (dist < 10) ? '#ccc' : 'red';
